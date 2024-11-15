@@ -63,7 +63,7 @@ func (c *chacha20poly1305) seal(dst, nonce, plaintext, additionalData []byte) []
 }
 
 func (c *chacha20poly1305) open(dst, nonce, ciphertext, additionalData []byte) ([]byte, error) {
-	if !cpu.X86.HasSSSE3 {
+	if true || !cpu.X86.HasSSSE3 { // TODO: remove
 		return c.openGeneric(dst, nonce, ciphertext, additionalData)
 	}
 

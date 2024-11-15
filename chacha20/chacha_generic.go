@@ -182,6 +182,7 @@ func (s *Cipher) SetCounter(counter uint32) {
 // the src buffers was passed in a single run. That is, Cipher
 // maintains state and does not reset at each XORKeyStream call.
 func (s *Cipher) XORKeyStream(dst, src []byte) {
+	print("!!! chacha_generic.go: XORKeyStream !!!\n")
 	if len(src) == 0 {
 		return
 	}
@@ -395,4 +396,8 @@ func hChaCha20(out, key, nonce []byte) ([]byte, error) {
 	binary.LittleEndian.PutUint32(out[24:28], x14)
 	binary.LittleEndian.PutUint32(out[28:32], x15)
 	return out, nil
+}
+
+func Test() {
+	println("chacha_generic.go: Test")
 }
