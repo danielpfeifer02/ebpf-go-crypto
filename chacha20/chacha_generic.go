@@ -201,9 +201,12 @@ func (s *Cipher) XORKeyStream(dst, src []byte) {
 			keyStream = keyStream[:len(src)]
 		}
 		_ = src[len(keyStream)-1] // bounds check elimination hint
+		fmt.Println("Leftover: ")
 		for i, b := range keyStream {
 			dst[i] = src[i] ^ b
+			fmt.Printf("%02x ", b)
 		}
+		fmt.Println()
 		s.len -= len(keyStream)
 		dst, src = dst[len(keyStream):], src[len(keyStream):]
 	}
@@ -264,6 +267,17 @@ func (s *Cipher) xorKeyStreamBlocksGeneric(dst, src []byte) {
 	for len(src) >= 64 && len(dst) >= 64 {
 
 		bitstream := s.generateNext64ByteBitstream()
+
+		fmt.Println("Counter: ", s.counter)
+		fmt.Print("Key: ")
+		for i := 0; i < len(s.key); i++ {
+			fmt.Printf("%02x ", s.key[i])
+		}
+		fmt.Println()
+		fmt.Print("Nonce: ")
+		for i := 0; i < len(s.nonce); i++ {
+			fmt.Printf("%02x ", s.nonce[i])
+		}
 
 		// TODO: remove
 		fmt.Println("\nActual Bitstream: ")
