@@ -40,3 +40,14 @@ func addXor(dst, src []byte, a, b uint32) {
 		dst[3] = src[3] ^ byte(a>>24)
 	}
 }
+
+// This helper function will be used for the bitstream xor generation.
+func fourByteXorBitstream(a, b uint32) []byte {
+	a += b
+	return []byte{
+		byte(a),
+		byte(a >> 8),
+		byte(a >> 16),
+		byte(a >> 24),
+	}
+}

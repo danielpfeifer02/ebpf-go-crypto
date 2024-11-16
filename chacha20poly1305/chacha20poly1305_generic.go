@@ -54,6 +54,16 @@ func (c *chacha20poly1305) openGeneric(dst, nonce, ciphertext, additionalData []
 	tag := ciphertext[len(ciphertext)-16:]
 	ciphertext = ciphertext[:len(ciphertext)-16]
 
+	// ---------------------------------------------------------
+	// TODO: remove
+	// c_copy := *c
+	// copy_nonce := make([]byte, len(nonce))
+	// copy(copy_nonce, nonce)
+	// log_s, _ := chacha20.NewUnauthenticatedCipher(c_copy.key[:], copy_nonce)
+	// log_s.SetCounter(1) // set the counter to 1, skipping 32 bytes
+	// log_s.LogBitStream()
+	// ---------------------------------------------------------
+
 	var polyKey [32]byte
 	s, _ := chacha20.NewUnauthenticatedCipher(c.key[:], nonce)
 	s.XORKeyStream(polyKey[:], polyKey[:])
@@ -77,5 +87,6 @@ func (c *chacha20poly1305) openGeneric(dst, nonce, ciphertext, additionalData []
 	}
 
 	s.XORKeyStream(out, ciphertext)
+
 	return ret, nil
 }

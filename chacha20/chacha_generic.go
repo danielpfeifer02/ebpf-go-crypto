@@ -10,6 +10,7 @@ import (
 	"crypto/cipher"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"math/bits"
 
 	"golang.org/x/crypto/internal/alias"
@@ -182,7 +183,6 @@ func (s *Cipher) SetCounter(counter uint32) {
 // the src buffers was passed in a single run. That is, Cipher
 // maintains state and does not reset at each XORKeyStream call.
 func (s *Cipher) XORKeyStream(dst, src []byte) {
-	print("!!! chacha_generic.go: XORKeyStream !!!\n")
 	if len(src) == 0 {
 		return
 	}
@@ -259,6 +259,55 @@ func (s *Cipher) xorKeyStreamBlocksGeneric(dst, src []byte) {
 		panic("chacha20: internal error: wrong dst and/or src length")
 	}
 
+	// A condition of len(src) > 0 would be sufficient, but this also
+	// acts as a bounds check elimination hint.
+	for len(src) >= 64 && len(dst) >= 64 {
+
+		bitstream := s.generateNext64ByteBitstream()
+
+		// TODO: remove
+		fmt.Println("\nActual Bitstream: ")
+		for i := 0; i < len(bitstream); i++ {
+			fmt.Printf("%02x ", bitstream[i])
+		}
+		fmt.Println()
+
+		fmt.Println("\nSrc Bitstream: ")
+		for i := 0; i < 64; i++ {
+			fmt.Printf("%02x ", src[i])
+		}
+		fmt.Println()
+
+		fmt.Println("\nDst Bitstream (str): ")
+		for i := 0; i < 64; i++ {
+			fmt.Printf("%c", src[i]^bitstream[i])
+		}
+		fmt.Println()
+
+		fmt.Println("\nDst Bitstream (hex): ")
+		for i := 0; i < 64; i++ {
+			fmt.Printf("%02x ", src[i]^bitstream[i])
+		}
+		fmt.Println()
+
+		// if crypto_settings.EBPFXOrBitstreamRegister != nil { // TODO: correct here?
+		// 	crypto_settings.EBPFXOrBitstreamRegister(bitstream)
+		// }
+
+		for i := 0; i < 64; i++ {
+			dst[i] = src[i] ^ bitstream[i]
+		}
+
+		s.counter += 1
+
+		src, dst = src[blockSize:], dst[blockSize:]
+	}
+}
+
+// EBPF_CRYPTO_TAG
+// This function creates the xor bitstream.
+func (s *Cipher) generateNext64ByteBitstream() []byte {
+
 	// To generate each block of key stream, the initial cipher state
 	// (represented below) is passed through 20 rounds of shuffling,
 	// alternatively applying quarterRounds by columns (like 1, 5, 9, 13)
@@ -287,56 +336,53 @@ func (s *Cipher) xorKeyStreamBlocksGeneric(dst, src []byte) {
 		s.precompDone = true
 	}
 
-	// A condition of len(src) > 0 would be sufficient, but this also
-	// acts as a bounds check elimination hint.
-	for len(src) >= 64 && len(dst) >= 64 {
-		// The remainder of the first column round.
-		fcr0, fcr4, fcr8, fcr12 := quarterRound(c0, c4, c8, s.counter)
+	// The remainder of the first column round.
+	fcr0, fcr4, fcr8, fcr12 := quarterRound(c0, c4, c8, s.counter)
 
-		// The second diagonal round.
-		x0, x5, x10, x15 := quarterRound(fcr0, s.p5, s.p10, s.p15)
-		x1, x6, x11, x12 := quarterRound(s.p1, s.p6, s.p11, fcr12)
-		x2, x7, x8, x13 := quarterRound(s.p2, s.p7, fcr8, s.p13)
-		x3, x4, x9, x14 := quarterRound(s.p3, fcr4, s.p9, s.p14)
+	// The second diagonal round.
+	x0, x5, x10, x15 := quarterRound(fcr0, s.p5, s.p10, s.p15)
+	x1, x6, x11, x12 := quarterRound(s.p1, s.p6, s.p11, fcr12)
+	x2, x7, x8, x13 := quarterRound(s.p2, s.p7, fcr8, s.p13)
+	x3, x4, x9, x14 := quarterRound(s.p3, fcr4, s.p9, s.p14)
 
-		// The remaining 18 rounds.
-		for i := 0; i < 9; i++ {
-			// Column round.
-			x0, x4, x8, x12 = quarterRound(x0, x4, x8, x12)
-			x1, x5, x9, x13 = quarterRound(x1, x5, x9, x13)
-			x2, x6, x10, x14 = quarterRound(x2, x6, x10, x14)
-			x3, x7, x11, x15 = quarterRound(x3, x7, x11, x15)
+	// The remaining 18 rounds.
+	for i := 0; i < 9; i++ {
+		// Column round.
+		x0, x4, x8, x12 = quarterRound(x0, x4, x8, x12)
+		x1, x5, x9, x13 = quarterRound(x1, x5, x9, x13)
+		x2, x6, x10, x14 = quarterRound(x2, x6, x10, x14)
+		x3, x7, x11, x15 = quarterRound(x3, x7, x11, x15)
 
-			// Diagonal round.
-			x0, x5, x10, x15 = quarterRound(x0, x5, x10, x15)
-			x1, x6, x11, x12 = quarterRound(x1, x6, x11, x12)
-			x2, x7, x8, x13 = quarterRound(x2, x7, x8, x13)
-			x3, x4, x9, x14 = quarterRound(x3, x4, x9, x14)
-		}
-
-		// Add back the initial state to generate the key stream, then
-		// XOR the key stream with the source and write out the result.
-		addXor(dst[0:4], src[0:4], x0, c0)
-		addXor(dst[4:8], src[4:8], x1, c1)
-		addXor(dst[8:12], src[8:12], x2, c2)
-		addXor(dst[12:16], src[12:16], x3, c3)
-		addXor(dst[16:20], src[16:20], x4, c4)
-		addXor(dst[20:24], src[20:24], x5, c5)
-		addXor(dst[24:28], src[24:28], x6, c6)
-		addXor(dst[28:32], src[28:32], x7, c7)
-		addXor(dst[32:36], src[32:36], x8, c8)
-		addXor(dst[36:40], src[36:40], x9, c9)
-		addXor(dst[40:44], src[40:44], x10, c10)
-		addXor(dst[44:48], src[44:48], x11, c11)
-		addXor(dst[48:52], src[48:52], x12, s.counter)
-		addXor(dst[52:56], src[52:56], x13, c13)
-		addXor(dst[56:60], src[56:60], x14, c14)
-		addXor(dst[60:64], src[60:64], x15, c15)
-
-		s.counter += 1
-
-		src, dst = src[blockSize:], dst[blockSize:]
+		// Diagonal round.
+		x0, x5, x10, x15 = quarterRound(x0, x5, x10, x15)
+		x1, x6, x11, x12 = quarterRound(x1, x6, x11, x12)
+		x2, x7, x8, x13 = quarterRound(x2, x7, x8, x13)
+		x3, x4, x9, x14 = quarterRound(x3, x4, x9, x14)
 	}
+
+	bitstream := make([]byte, 0) // TODO: make more efficient since size is known -> append not needed
+
+	// Add back the initial state to generate the key stream, then
+	// XOR the key stream with the source and write out the result.
+	bitstream = append(bitstream, fourByteXorBitstream(x0, c0)...)
+	bitstream = append(bitstream, fourByteXorBitstream(x1, c1)...)
+	bitstream = append(bitstream, fourByteXorBitstream(x2, c2)...)
+	bitstream = append(bitstream, fourByteXorBitstream(x3, c3)...)
+	bitstream = append(bitstream, fourByteXorBitstream(x4, c4)...)
+	bitstream = append(bitstream, fourByteXorBitstream(x5, c5)...)
+	bitstream = append(bitstream, fourByteXorBitstream(x6, c6)...)
+	bitstream = append(bitstream, fourByteXorBitstream(x7, c7)...)
+	bitstream = append(bitstream, fourByteXorBitstream(x8, c8)...)
+	bitstream = append(bitstream, fourByteXorBitstream(x9, c9)...)
+	bitstream = append(bitstream, fourByteXorBitstream(x10, c10)...)
+	bitstream = append(bitstream, fourByteXorBitstream(x11, c11)...)
+	bitstream = append(bitstream, fourByteXorBitstream(x12, s.counter)...)
+	bitstream = append(bitstream, fourByteXorBitstream(x13, c13)...)
+	bitstream = append(bitstream, fourByteXorBitstream(x14, c14)...)
+	bitstream = append(bitstream, fourByteXorBitstream(x15, c15)...)
+
+	return bitstream
+
 }
 
 // HChaCha20 uses the ChaCha20 core to generate a derived key from a 32 bytes
@@ -398,6 +444,21 @@ func hChaCha20(out, key, nonce []byte) ([]byte, error) {
 	return out, nil
 }
 
-func Test() {
-	println("chacha_generic.go: Test")
+func (s *Cipher) LogBitStream() {
+
+	ciphercopy := *s // TODO: would prolly be better to not work on copy
+
+	numberOfBlocksGenerated := 3
+
+	for i := 0; i < numberOfBlocksGenerated; i++ {
+		bitstream := ciphercopy.generateNext64ByteBitstream()
+
+		fmt.Printf("\nBitstream %d: ", i+1)
+		for j := 0; j < 64; j++ {
+			fmt.Printf("%02x ", bitstream[j])
+		}
+		fmt.Println()
+
+		ciphercopy.counter += 1
+	}
 }
