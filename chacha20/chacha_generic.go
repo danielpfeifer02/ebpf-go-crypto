@@ -12,7 +12,9 @@ import (
 	"errors"
 	"fmt"
 	"math/bits"
+	"os"
 
+	crypto_settings "golang.org/x/crypto"
 	"golang.org/x/crypto/internal/alias"
 )
 
@@ -280,7 +282,7 @@ func (s *Cipher) xorKeyStreamBlocksGeneric(dst, src []byte) {
 		}
 
 		// TODO: remove
-		fmt.Println("\nActual Bitstream: ")
+		fmt.Println("\nActual Bitstream (cipher: ", s, "): ")
 		for i := 0; i < len(bitstream); i++ {
 			fmt.Printf("%02x ", bitstream[i])
 		}
@@ -396,6 +398,41 @@ func (s *Cipher) generateNext64ByteBitstream() []byte {
 	bitstream = append(bitstream, fourByteXorBitstream(x15, c15)...)
 
 	return bitstream
+
+}
+
+func (s *Cipher) Start1RTTCryptoBitstreamStorage(pn uint64) {
+
+	// Write three blocks of key stream to the bitstream storage.
+	file_path := "/tmp/ebpf_crypto_tag.txt"
+	// Open file using READ & WRITE permission.
+	file, err := os.OpenFile(file_path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		fmt.Println("Error: ", err)
+		os.Exit(1)
+	}
+	defer file.Close()
+
+	fmt.Fprintln(file, "Bitstream (cipher: ", s, ")")
+
+	totalBitstream := make([]byte, 0)
+
+	for i := 0; i < 3; i++ {
+		bitstream := s.generateNext64ByteBitstream()
+		totalBitstream = append(totalBitstream, bitstream...)
+
+		fmt.Fprintln(file, "Block ", i+1)
+		for j := 0; j < 64; j++ {
+			fmt.Fprintf(file, "%02x ", bitstream[j])
+		}
+		fmt.Fprintln(file)
+
+		s.counter += 1
+	}
+
+	if crypto_settings.EBPFXOrBitstreamRegister != nil {
+		crypto_settings.EBPFXOrBitstreamRegister(pn, totalBitstream)
+	}
 
 }
 

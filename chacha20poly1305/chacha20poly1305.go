@@ -10,6 +10,10 @@ package chacha20poly1305
 import (
 	"crypto/cipher"
 	"errors"
+	"fmt"
+	"os"
+
+	"golang.org/x/crypto/chacha20"
 )
 
 const (
@@ -35,6 +39,8 @@ const (
 type chacha20poly1305 struct {
 	key [KeySize]byte
 }
+
+type Chacha20poly1305 = chacha20poly1305
 
 // New returns a ChaCha20-Poly1305 AEAD that uses the given 256-bit key.
 func New(key []byte) (cipher.AEAD, error) {
@@ -64,6 +70,46 @@ func (c *chacha20poly1305) Seal(dst, nonce, plaintext, additionalData []byte) []
 	}
 
 	return c.seal(dst, nonce, plaintext, additionalData)
+}
+
+// EBPF_CRYPTO_TAG
+func (c *chacha20poly1305) Start1RTTCryptoBitstreamStorage(nonce []byte, pn uint64) {
+
+	tmp_file := "/tmp/ebpf_crypto_tag.txt"
+	// Open file using READ & WRITE permission.
+	file, err := os.OpenFile(tmp_file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		fmt.Println("Error: ", err)
+		os.Exit(1)
+	}
+	defer file.Close()
+
+	fmt.Fprintln(file, "Start1RTTCryptoBitstreamStorage (pn: ", pn, ")")
+
+	fmt.Fprintln(file, "Key")
+	for i := 0; i < len(c.key); i++ {
+		fmt.Fprintf(file, "%02x ", c.key[i])
+	}
+	fmt.Fprintln(file)
+
+	fmt.Fprintln(file, "Nonce")
+	for i := 0; i < len(nonce); i++ {
+		fmt.Fprintf(file, "%02x ", nonce[i])
+	}
+	fmt.Fprintln(file)
+
+	key_copy := make([]byte, len(c.key))
+	copy(key_copy, c.key[:])
+
+	cipher, err := chacha20.NewUnauthenticatedCipher(key_copy, nonce)
+	if err != nil {
+		fmt.Println("Error: ", err)
+		os.Exit(1)
+	}
+	// cipher.SetCounter(1) // set the counter to 1, skipping 32 bytes // TODO: what's the polykey thing in the real code?
+
+	cipher.Start1RTTCryptoBitstreamStorage(pn)
+
 }
 
 var errOpen = errors.New("chacha20poly1305: message authentication failed")
