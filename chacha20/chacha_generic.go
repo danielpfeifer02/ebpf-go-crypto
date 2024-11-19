@@ -414,12 +414,8 @@ func (s *Cipher) Start1RTTCryptoBitstreamStorage(pn uint64) {
 	defer file.Close()
 
 	fmt.Fprintln(file, "Bitstream (cipher: ", s, ")")
-
-	totalBitstream := make([]byte, 0)
-
-	for i := 0; i < 3; i++ {
+	for i := 0; i < crypto_settings.MAX_BLOCKS_PER_PACKET; i++ { // TODO: generate enough blocks for 1-RTT packets (24 == max blocks per packet)
 		bitstream := s.generateNext64ByteBitstream()
-		totalBitstream = append(totalBitstream, bitstream...)
 
 		fmt.Fprintln(file, "Block ", i+1)
 		for j := 0; j < 64; j++ {
@@ -428,10 +424,10 @@ func (s *Cipher) Start1RTTCryptoBitstreamStorage(pn uint64) {
 		fmt.Fprintln(file)
 
 		s.counter += 1
-	}
 
-	if crypto_settings.EBPFXOrBitstreamRegister != nil {
-		crypto_settings.EBPFXOrBitstreamRegister(pn, totalBitstream)
+		if crypto_settings.EBPFXOrBitstreamRegister != nil {
+			crypto_settings.EBPFXOrBitstreamRegister(pn, uint8(i), bitstream)
+		}
 	}
 
 }
