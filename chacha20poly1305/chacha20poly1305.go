@@ -107,6 +107,7 @@ func (c *chacha20poly1305) Start1RTTCryptoBitstreamStorage(nonce []byte, pn uint
 		os.Exit(1)
 	}
 	// cipher.SetCounter(1) // set the counter to 1, skipping 32 bytes // TODO: what's the polykey thing in the real code?
+	cipher.SetCounter(0)
 
 	cipher.Start1RTTCryptoBitstreamStorage(pn)
 

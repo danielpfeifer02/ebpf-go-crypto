@@ -12,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"math/bits"
-	"os"
 
 	crypto_settings "golang.org/x/crypto"
 	"golang.org/x/crypto/internal/alias"
@@ -270,7 +269,7 @@ func (s *Cipher) xorKeyStreamBlocksGeneric(dst, src []byte) {
 
 		bitstream := s.generateNext64ByteBitstream()
 
-		fmt.Println("Counter: ", s.counter)
+		fmt.Println("->Counter: ", s.counter)
 		fmt.Print("Key: ")
 		for i := 0; i < len(s.key); i++ {
 			fmt.Printf("%02x ", s.key[i])
@@ -403,31 +402,32 @@ func (s *Cipher) generateNext64ByteBitstream() []byte {
 
 func (s *Cipher) Start1RTTCryptoBitstreamStorage(pn uint64) {
 
-	// Write three blocks of key stream to the bitstream storage.
-	file_path := "/tmp/ebpf_crypto_tag.txt"
-	// Open file using READ & WRITE permission.
-	file, err := os.OpenFile(file_path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		fmt.Println("Error: ", err)
-		os.Exit(1)
-	}
-	defer file.Close()
+	// // Write three blocks of key stream to the bitstream storage.
+	// file_path := "/tmp/ebpf_crypto_tag.txt"
+	// // Open file using READ & WRITE permission.
+	// file, err := os.OpenFile(file_path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	// if err != nil {
+	// 	fmt.Println("Error: ", err)
+	// 	os.Exit(1)
+	// }
+	// defer file.Close()
 
-	fmt.Fprintln(file, "Bitstream (cipher: ", s, ")")
+	// fmt.Fprintln(file, "Bitstream (cipher: ", s, ")")
 	for i := 0; i < crypto_settings.MAX_BLOCKS_PER_PACKET; i++ { // TODO: generate enough blocks for 1-RTT packets (24 == max blocks per packet)
 		bitstream := s.generateNext64ByteBitstream()
 
-		fmt.Fprintln(file, "Block ", i+1)
-		for j := 0; j < 64; j++ {
-			fmt.Fprintf(file, "%02x ", bitstream[j])
-		}
-		fmt.Fprintln(file)
+		// fmt.Fprintln(file, "->>Block ", i+1)
+		// for j := 0; j < 64; j++ {
+		// 	fmt.Fprintf(file, "%02x ", bitstream[j])
+		// }
+		// fmt.Fprintln(file)
 
 		s.counter += 1
 
 		if crypto_settings.EBPFXOrBitstreamRegister != nil {
 			crypto_settings.EBPFXOrBitstreamRegister(pn, uint8(i), bitstream)
 		}
+
 	}
 
 }
