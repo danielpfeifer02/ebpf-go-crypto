@@ -269,41 +269,41 @@ func (s *Cipher) xorKeyStreamBlocksGeneric(dst, src []byte) {
 
 		bitstream := s.generateNext64ByteBitstream()
 
-		fmt.Println("->Counter: ", s.counter)
-		fmt.Print("Key: ")
-		for i := 0; i < len(s.key); i++ {
-			fmt.Printf("%02x ", s.key[i])
-		}
-		fmt.Println()
-		fmt.Print("Nonce: ")
-		for i := 0; i < len(s.nonce); i++ {
-			fmt.Printf("%02x ", s.nonce[i])
-		}
+		// fmt.Println("->Counter: ", s.counter)
+		// fmt.Print("Key: ")
+		// for i := 0; i < len(s.key); i++ {
+		// 	fmt.Printf("%02x ", s.key[i])
+		// }
+		// fmt.Println()
+		// fmt.Print("Nonce: ")
+		// for i := 0; i < len(s.nonce); i++ {
+		// 	fmt.Printf("%02x ", s.nonce[i])
+		// }
 
-		// TODO: remove
-		fmt.Println("\nActual Bitstream (cipher: ", s, "): ")
-		for i := 0; i < len(bitstream); i++ {
-			fmt.Printf("%02x ", bitstream[i])
-		}
-		fmt.Println()
+		// // TODO: remove
+		// fmt.Println("\nActual Bitstream (cipher: ", s, "): ")
+		// for i := 0; i < len(bitstream); i++ {
+		// 	fmt.Printf("%02x ", bitstream[i])
+		// }
+		// fmt.Println()
 
-		fmt.Println("\nSrc Bitstream: ")
-		for i := 0; i < 64; i++ {
-			fmt.Printf("%02x ", src[i])
-		}
-		fmt.Println()
+		// fmt.Println("\nSrc Bitstream: ")
+		// for i := 0; i < 64; i++ {
+		// 	fmt.Printf("%02x ", src[i])
+		// }
+		// fmt.Println()
 
-		fmt.Println("\nDst Bitstream (str): ")
-		for i := 0; i < 64; i++ {
-			fmt.Printf("%c", src[i]^bitstream[i])
-		}
-		fmt.Println()
+		// fmt.Println("\nDst Bitstream (str): ")
+		// for i := 0; i < 64; i++ {
+		// 	fmt.Printf("%c", src[i]^bitstream[i])
+		// }
+		// fmt.Println()
 
-		fmt.Println("\nDst Bitstream (hex): ")
-		for i := 0; i < 64; i++ {
-			fmt.Printf("%02x ", src[i]^bitstream[i])
-		}
-		fmt.Println()
+		// fmt.Println("\nDst Bitstream (hex): ")
+		// for i := 0; i < 64; i++ {
+		// 	fmt.Printf("%02x ", src[i]^bitstream[i])
+		// }
+		// fmt.Println()
 
 		// if crypto_settings.EBPFXOrBitstreamRegister != nil { // TODO: correct here?
 		// 	crypto_settings.EBPFXOrBitstreamRegister(bitstream)
