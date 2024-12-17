@@ -75,33 +75,38 @@ func (c *chacha20poly1305) Seal(dst, nonce, plaintext, additionalData []byte) []
 // EBPF_CRYPTO_TAG
 func (c *chacha20poly1305) Start1RTTCryptoBitstreamStorage(nonce []byte, pn uint64) {
 
-	tmp_file := "/tmp/ebpf_crypto_tag.txt"
-	// Open file using READ & WRITE permission.
-	file, err := os.OpenFile(tmp_file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		fmt.Println("Error: ", err)
-		os.Exit(1)
-	}
-	defer file.Close()
+	// tmp_file := "/tmp/ebpf_crypto_tag.txt" // TODO: remove this tmp file
+	// // Open file using READ & WRITE permission.
+	// file, err := os.OpenFile(tmp_file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	// if err != nil {
+	// 	fmt.Println("Error: ", err)
+	// 	os.Exit(1)
+	// }
+	// defer file.Close()
 
-	fmt.Fprintln(file, "Start1RTTCryptoBitstreamStorage (pn: ", pn, ")")
+	// fmt.Fprintln(file, "Start1RTTCryptoBitstreamStorage (pn: ", pn, ")")
 
-	fmt.Fprintln(file, "Key")
-	for i := 0; i < len(c.key); i++ {
-		fmt.Fprintf(file, "%02x ", c.key[i])
-	}
-	fmt.Fprintln(file)
+	// fmt.Fprintln(file, "Key")
+	// for i := 0; i < len(c.key); i++ {
+	// 	fmt.Fprintf(file, "%02x ", c.key[i])
+	// }
+	// fmt.Fprintln(file)
 
-	fmt.Fprintln(file, "Nonce")
-	for i := 0; i < len(nonce); i++ {
-		fmt.Fprintf(file, "%02x ", nonce[i])
-	}
-	fmt.Fprintln(file)
+	// fmt.Fprintln(file, "Nonce")
+	// for i := 0; i < len(nonce); i++ {
+	// 	fmt.Fprintf(file, "%02x ", nonce[i])
+	// }
+	// fmt.Fprintln(file)
 
 	key_copy := make([]byte, len(c.key))
-	copy(key_copy, c.key[:])
+	n := copy(key_copy, c.key[:])
+	nonce_copy := make([]byte, len(nonce))
+	m := copy(nonce_copy, nonce[:])
+	if n != KeySize || m != NonceSize {
+		panic("chacha20poly1305: bad key or nonce length passed to Start1RTTCryptoBitstreamStorage")
+	}
 
-	cipher, err := chacha20.NewUnauthenticatedCipher(key_copy, nonce)
+	cipher, err := chacha20.NewUnauthenticatedCipher(key_copy, nonce_copy)
 	if err != nil {
 		fmt.Println("Error: ", err)
 		os.Exit(1)

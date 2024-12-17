@@ -9,6 +9,7 @@ package chacha20
 import (
 	"crypto/cipher"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/bits"
@@ -423,6 +424,11 @@ func (s *Cipher) Start1RTTCryptoBitstreamStorage(pn uint64) {
 		// fmt.Fprintln(file)
 
 		s.counter += 1
+
+		if s.counter == 1 {
+			fmt.Println("First block of pn ", pn, " generated.")
+			fmt.Println(hex.Dump(bitstream))
+		}
 
 		if crypto_settings.EBPFXOrBitstreamRegister != nil {
 			crypto_settings.EBPFXOrBitstreamRegister(pn, uint8(i), bitstream)
